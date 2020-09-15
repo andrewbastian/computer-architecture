@@ -11,27 +11,36 @@ class CPU:
         self.reg = [0]*8
         self.ram = [0]*256
         self.pc = 0
+        self.address = 0
 
     def load(self):
         """Load a program into memory."""
 
-        address = 0
+        # address = 0
 
         # For now, we've just hardcoded a program:
 
-        program = [
-            # From print8.ls8
-            0b10000010,  # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111,  # PRN R0
-            0b00000000,
-            0b00000001,  # HLT
-        ]
+        # program = [
+        #     # From print8.ls8
+        #     0b10000010,  # LDI R0,8
+        #     0b00000000,
+        #     0b00001000,
+        #     0b01000111,  # PRN R0
+        #     0b00000000,
+        #     0b00000001,  # HLT
+        # ]
 
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+        # for instruction in program:
+        #     self.ram[address] = instruction
+        #     address += 1
+            
+        self.address = 0
+
+        if len(sys.argv[1]) != 2:
+            print('usage: cpu.py filename')
+            sys.exit(1)
+
+        try:
 
 
     def alu(self, op, reg_a, reg_b):
@@ -90,4 +99,3 @@ class CPU:
 
             self.pc += 1
 
-            
