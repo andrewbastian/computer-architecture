@@ -8,12 +8,20 @@ class CPU:
 
     def __init__(self):
         """Construct a new CPU."""
-        self.reg = [0]*8
-        self.ram = [0]*256
-        self.pc = 0
+        self.reg = [0]*8  # R0-R7 - variables in hardware w/ fixed names and number of registers.
+        self.ram = [0]*256  # memory 
+        self.pc = 0  # Program Couter - address of the current excecuted instruction
         self.address = 0
         self.runs = True
         self.sp = len(self.reg)  # STACK POINTER
+        self.bht = {
+            0b00000001: self.op_HLT,
+            0b10000010: self.op_LDI,
+            0b01000111: self.op_PRN,
+            0b10100010: self.op_MUL,
+            0b01000101: self.op_PUSH,
+            0b01000110: self.op_POP,
+        }
 
     def load(self):
         """Load a program into memory."""
@@ -117,32 +125,61 @@ class CPU:
         self.load()
         while self.runs:
             command = self.ram[self.pc]
-            op_a = self.ram_read(self.pc + 1)
-            op_b = self.ram_read(self.pc + 2)
-
-            if command == 0b00000001:  # halt
+            if command in self.bht:
+                func = self.bht[command]
+                func()
+                # self.trace()
+            else:
+                print(command, 'Not a valid command')
                 break
 
-            elif command == 0b10000010:  # set reg val to int
-                self.reg[op_a] = op_b
-                self.pc += 3
+    def op_HLT(self):
+        # halt
+        self.runs = False
 
-            elif command == 0b01000111:  # Print
-                print(self.reg[op_a])
-                self.pc += 2
-            elif command == 0b10100010:  # multiply
-                self.reg[op_a] *= self.reg[op_b]
-                self.pc += 3
-            elif command == 0b01000101:
-                self.sp -= 1
-                self.reg[self.sp] = self.reg[self.ram[self.pc + 1]]  # PUSH VALUE TO RAM @ PC INTO STACK AND SAVE VALUE IN STACK
-                self.pc += 2
-            elif command == 0b01000110:
-                self.reg[self.ram[self.pc + 1]] = self.reg[self.sp]  # POP FROM STACK AND ADD TO REGISTER
-                self.sp += 1
-                self.pc += 2
-            else:
-                self.runs = False
-                print(f"Invalid input {command}")
+    def op_LDI(self):
+        # set reg val to int
+
+        op_a = self.ram_read(self.pc + 1)
+        op_b = self.ram_read(self.pc + 2)
+        self.reg[op_a] = op_b
+        self.pc += 3
+
+    def op_PRN(self):
+        op_a = self.ram_read(self.pc + 1)
+        print(self.reg[op_a])
+        self.pc += 2
+
+    def op_MUL(self):
+        op_a = self.ram_read(self.pc + 1)
+        op_b = self.ram_read(self.pc + 2)
+        self.reg[op_a] *= self.reg[op_b]
+        self.pc += 3
+
+    def op_PUSH(self):
+        self.sp -= 1
+        self.reg[self.sp] = self.reg[self.ram[self.pc + 1]]  # PUSH VALUE TO RAM @ PC INTO STACK AND SAVE VALUE IN STACK
+        self.pc += 2
+
+    def op_POP(self):
+        self.reg[self.ram[self.pc + 1]] = self.reg[self.sp]  # POP FROM STACK AND ADD TO REGISTER
+        self.sp += 1
+        self.pc += 2
+
+            # #___________________DAY 3 CODE _____________________________ 
+            # elif command == 0b01000101:
+            #     self.sp -= 1
+            #     self.reg[self.sp] = self.reg[self.ram[self.pc + 1]]  # PUSH VALUE TO RAM @ PC INTO STACK AND SAVE VALUE IN STACK
+            #     self.pc += 2
+            # elif command == 0b01000110:
+            #     self.reg[self.ram[self.pc + 1]] = self.reg[self.sp]  # POP FROM STACK AND ADD TO REGISTER
+            #     self.sp += 1
+            #     self.pc += 2
+
+
+            # #_________________________________________________________
+            # else:
+            #     self.runs = False
+            #     print(f"Invalid input {command}")
                 
 
