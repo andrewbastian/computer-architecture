@@ -12,6 +12,8 @@ class CPU:
         self.ram = [0]*256
         self.pc = 0
         self.address = 0
+        self.runs = True
+        self.sp = len(self.reg)  # STACK POINTER
 
     def load(self):
         """Load a program into memory."""
@@ -33,22 +35,54 @@ class CPU:
         # for instruction in program:
         #     self.ram[address] = instruction
         #     address += 1
-            
+
         self.address = 0
 
-        if len(sys.argv[1]) != 2:
-            print('usage: cpu.py filename')
-            sys.exit(1)
+        if len(sys.argv) < 2:
+            print('Error, lacking arguments')
+            sys.exit(0)
 
         try:
+            with open(sys.argv[1]) as f:
+                for line in f:
+                    t = line.split()
+                    n = line.strip()
 
+                    if len(t) == 0:
+                        continue
+                    if t[0][0] == '#':
+                        continue
+                    try:
+                        self.ram[self.address] = int(t[0], 2)
+                    except ValueError:
+                        print(f"Invalid number {n} ")
+                        sys.exit(1)
+
+                    self.address += 1
+        except FileNotFoundError:
+            print(f"Not a valid number - {t[0]}")
+            sys.exit(2)
+
+        if self.address == 0:
+            print('no input into program')
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
-
+        # ______________DAY 1 CODE
+        # if op == "ADD":
+        #     self.reg[reg_a] += self.reg[reg_b]
+        # #elif op == "SUB": etc
+        # _______________DAY 2 CODE
+        a = self.reg[reg_a]
+        b = self.reg[reg_b]
         if op == "ADD":
-            self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+            a += b
+        elif op == 'SUB':
+            a -= b
+        elif op == 'MUL':
+            a *= b
+        elif op == 'DIV':
+            a /= b
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -81,21 +115,34 @@ class CPU:
     def run(self):
         """Run the CPU."""
         self.load()
-        while self.pc < len(self.ram):
+        while self.runs:
             command = self.ram[self.pc]
+            op_a = self.ram_read(self.pc + 1)
+            op_b = self.ram_read(self.pc + 2)
 
-            HLT = 0b00000001
-
-            if command == HLT:
+            if command == 0b00000001:  # halt
                 break
 
-            if command == 0b10000010:
-                self.ram_write(self.ram[self.pc+1], self.ram[self.pc+2])
+            elif command == 0b10000010:  # set reg val to int
+                self.reg[op_a] = op_b
+                self.pc += 3
+
+            elif command == 0b01000111:  # Print
+                print(self.reg[op_a])
                 self.pc += 2
-
-            if command == 0b01000111:
-                print(self.ram_read(self.ram[self.pc+1]))
-                self.pc += 1
-
-            self.pc += 1
+            elif command == 0b10100010:  # multiply
+                self.reg[op_a] *= self.reg[op_b]
+                self.pc += 3
+            elif command == 0b01000101:
+                self.sp -= 1
+                self.reg[self.sp] = self.reg[self.ram[self.pc + 1]]  # PUSH VALUE TO RAM @ PC INTO STACK AND SAVE VALUE IN STACK
+                self.pc += 2
+            elif command == 0b01000110:
+                self.reg[self.ram[self.pc + 1]] = self.reg[self.sp]  # POP FROM STACK AND ADD TO REGISTER
+                self.sp += 1
+                self.pc += 2
+            else:
+                self.runs = False
+                print(f"Invalid input {command}")
+                
 
