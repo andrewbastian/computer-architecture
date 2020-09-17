@@ -2,6 +2,10 @@
 
 import sys
 
+# `FL` bits: `00000LGE`
+EQL_fl = 0b001
+GRTR_fl = 0b010
+LESS_fl = 0b100
 
 class CPU:
     """Main CPU class."""
@@ -12,67 +16,51 @@ class CPU:
         self.ram = [0]*256  # memory 
         self.pc = 0  # Program Couter - address of the current excecuted instruction
         self.address = 0
-        self.runs = True
-        self.sp = len(self.reg)  # STACK POINTER
+        self.flag = 0
+        self.runs = False
+        self.sp = 7  # STACK POINTER
+        self.reg[self.sp] = 0xF4
         self.bht = {
             0b00000001: self.op_HLT,
             0b10000010: self.op_LDI,
             0b01000111: self.op_PRN,
+            0b10100000: self.op_ADD,
             0b10100010: self.op_MUL,
             0b01000101: self.op_PUSH,
             0b01000110: self.op_POP,
+            0b01010000: self.op_CALL,
+            0b00010001: self.op_RET,
+            0b10101000: self.op_AND,
+            0b01101001: self.op_NOT,
+            0b10101010: self.op_OR,
+            0b10101011: self.op_XOR
         }
 
     def load(self):
         """Load a program into memory."""
 
-        # address = 0
-
-        # For now, we've just hardcoded a program:
-
-        # program = [
-        #     # From print8.ls8
-        #     0b10000010,  # LDI R0,8
-        #     0b00000000,
-        #     0b00001000,
-        #     0b01000111,  # PRN R0
-        #     0b00000000,
-        #     0b00000001,  # HLT
-        # ]
-
-        # for instruction in program:
-        #     self.ram[address] = instruction
-        #     address += 1
-
-        self.address = 0
+        address = 0
 
         if len(sys.argv) < 2:
             print('Error, lacking arguments')
-            sys.exit(0)
-
+            sys.exit()
         try:
             with open(sys.argv[1]) as f:
                 for line in f:
-                    t = line.split()
-                    n = line.strip()
+                    t = line.split('#')[0]
+                    n = t.strip()
 
-                    if len(t) == 0:
+                    if n == '':
                         continue
-                    if t[0][0] == '#':
-                        continue
-                    try:
-                        self.ram[self.address] = int(t[0], 2)
-                    except ValueError:
-                        print(f"Invalid number {n} ")
-                        sys.exit(1)
+                    command = int(n, 2)
 
-                    self.address += 1
+                    self.ram[address] = command
+
+                    address += 1
+
         except FileNotFoundError:
             print(f"Not a valid number - {t[0]}")
-            sys.exit(2)
-
-        if self.address == 0:
-            print('no input into program')
+            sys.exit()
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
@@ -122,7 +110,8 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        self.load()
+        # self.load()
+        self.runs = True
         while self.runs:
             command = self.ram[self.pc]
             if command in self.bht:
@@ -130,8 +119,8 @@ class CPU:
                 func()
                 # self.trace()
             else:
-                print(command, 'Not a valid command')
-                break
+                print(command, ': is not a valid command')
+                self.runs = False
 
     def op_HLT(self):
         # halt
@@ -150,11 +139,40 @@ class CPU:
         print(self.reg[op_a])
         self.pc += 2
 
+    def op_ADD(self):
+        op_a = self.ram_read(self.pc + 1)
+        op_b = self.ram_read(self.pc + 2)
+        self.alu('ADD', op_a, op_b)
+        self.pc += 3
+
     def op_MUL(self):
         op_a = self.ram_read(self.pc + 1)
         op_b = self.ram_read(self.pc + 2)
         self.reg[op_a] *= self.reg[op_b]
         self.pc += 3
+
+    def op_AND(self):
+        op_a = self.ram_read(self.pc + 1)
+        op_b = self.ram_read(self.pc + 2)
+        self.reg[self.ram_read(self.pc + 1)] = (op_a & op_b)
+        self.pc += 3
+
+    def op_OR(self):
+        op_a = self.ram_read(self.pc + 1)
+        op_b = self.ram_read(self.pc + 2)
+        self.reg[self.ram_read(self.pc + 1)] = (op_a | op_b)
+        self.pc += 3
+
+    def op_XOR(self):
+        op_a = self.ram_read(self.pc + 1)
+        op_b = self.ram_read(self.pc + 2)
+        self.reg[self.ram_read(self.pc + 1)] = (op_a ^ op_b)
+        self.pc += 3
+
+    def op_NOT(self):
+        op_a = self.ram_read(self.pc + 1)
+        self.reg[self.ram_read(self.pc + 1)] = ~op_a
+        self.pc += 2
 
     def op_PUSH(self):
         self.sp -= 1
@@ -166,20 +184,24 @@ class CPU:
         self.sp += 1
         self.pc += 2
 
-            # #___________________DAY 3 CODE _____________________________ 
-            # elif command == 0b01000101:
-            #     self.sp -= 1
-            #     self.reg[self.sp] = self.reg[self.ram[self.pc + 1]]  # PUSH VALUE TO RAM @ PC INTO STACK AND SAVE VALUE IN STACK
-            #     self.pc += 2
-            # elif command == 0b01000110:
-            #     self.reg[self.ram[self.pc + 1]] = self.reg[self.sp]  # POP FROM STACK AND ADD TO REGISTER
-            #     self.sp += 1
-            #     self.pc += 2
+    def op_CALL(self):
+        # return address
+        return_address = self.pc + 2
 
+        # push onto the stack
+        self.reg[self.sp] -= 1
+        self.ram[self.reg[self.sp]] = return_address
 
-            # #_________________________________________________________
-            # else:
-            #     self.runs = False
-            #     print(f"Invalid input {command}")
-                
+        # set COUNTER to the REGISTER'S value
+        reg_num = self.ram[self.pc+1]
+        dest_addr = self.reg[reg_num]
+        self.pc = dest_addr
+
+    def op_RET(self):
+        # get return address from top of stack
+        return_address = self.ram[self.reg[self.sp]]
+        self.reg[self.sp] += 1
+
+        # set the pc
+        self.pc = return_address
 
