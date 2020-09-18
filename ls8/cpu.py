@@ -214,8 +214,8 @@ class CPU:
 
     def op_CMP(self):
         """compare the values in two registers"""
-        op_a = self.ram_read(self.pc + 1)
-        op_b = self.ram_read(self.pc + 2)
+        op_a = self.reg[self.ram_read(self.pc + 1)]
+        op_b = self.reg[self.ram_read(self.pc + 2)]
 
         if op_a > op_b:
             self.flag = GRTR_fl
@@ -223,7 +223,7 @@ class CPU:
             self.flag = LESS_fl
         else:
             self.flag = EQL_fl
-
+        # increment count by 3
         self.pc += 3
 
     def op_JMP(self):
