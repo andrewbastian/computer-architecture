@@ -7,13 +7,14 @@ EQL_fl = 0b001
 GRTR_fl = 0b010
 LESS_fl = 0b100
 
+
 class CPU:
     """Main CPU class."""
 
     def __init__(self):
         """Construct a new CPU."""
         self.reg = [0]*8  # R0-R7 - variables in hardware w/ fixed names and number of registers.
-        self.ram = [0]*256  # memory 
+        self.ram = [0]*256  # memory
         self.pc = 0  # Program Couter - address of the current excecuted instruction
         self.address = 0
         self.flag = 0
@@ -33,7 +34,11 @@ class CPU:
             0b10101000: self.op_AND,
             0b01101001: self.op_NOT,
             0b10101010: self.op_OR,
-            0b10101011: self.op_XOR
+            0b10101011: self.op_XOR,
+            0b10100111: self.op_CMP,
+            0b01010100: self.op_JMP,
+            0b01010110: self.op_JNE,
+            0b01010101: self.op_JEQ
         }
 
     def load(self):
@@ -175,12 +180,14 @@ class CPU:
         self.pc += 2
 
     def op_PUSH(self):
+        # PUSH VALUE TO RAM @ PC INTO STACK AND SAVE VALUE IN STACK
         self.sp -= 1
-        self.reg[self.sp] = self.reg[self.ram[self.pc + 1]]  # PUSH VALUE TO RAM @ PC INTO STACK AND SAVE VALUE IN STACK
+        self.reg[self.sp] = self.reg[self.ram[self.pc + 1]]
         self.pc += 2
 
     def op_POP(self):
-        self.reg[self.ram[self.pc + 1]] = self.reg[self.sp]  # POP FROM STACK AND ADD TO REGISTER
+        # POP FROM STACK AND ADD TO REGISTER
+        self.reg[self.ram[self.pc + 1]] = self.reg[self.sp]
         self.sp += 1
         self.pc += 2
 
@@ -205,3 +212,38 @@ class CPU:
         # set the pc
         self.pc = return_address
 
+    def op_CMP(self):
+        """compare the values in two registers"""
+        op_a = self.ram_read(self.pc + 1)
+        op_b = self.ram_read(self.pc + 2)
+
+        if op_a > op_b:
+            self.flag = GRTR_fl
+        elif op_a < op_b:
+            self.flag = LESS_fl
+        else:
+            self.flag = EQL_fl
+
+        self.pc += 3
+
+    def op_JMP(self):
+        """Jump to the address stored in the given register"""
+        j = self.ram_read(self.pc + 1)
+        # set the COUNTER to the given REGISTER'S ADDRESS
+        self.pc = self.reg[j]
+
+    def op_JNE(self):
+        """if the EQUALS FLAG is FALSE,
+        jump to the address stored in the given register"""
+        if self.flag & EQL_fl == 0:
+            self.pc = self.reg[self.ram_read(self.pc + 1)]
+        else:
+            self.pc += 2
+
+    def op_JEQ(self):
+        """if the EQUALS FLAG is TRUE,
+        jump to the address stored in the given register"""
+        if self.flag & EQL_fl == 1:
+            self.pc = self.reg[self.ram_read(self.pc + 1)]
+        else:
+            self.pc += 2
